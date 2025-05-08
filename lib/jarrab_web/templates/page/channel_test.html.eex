@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="<%= Phoenix.Controller.get_csrf_token() %>">
+  <title>Channel Test</title>
+  <!-- Use a CDN for phoenix.js if your asset pipeline isn't correctly set up -->
+  <script src="https://unpkg.com/phoenix@1.7.0/priv/static/phoenix.js"></script>
+</head>
+<body>
+  <h1>Channel Test</h1>
+  <p>Check the browser console for connection status.</p>
+  <script>
+    if (typeof window.Phoenix === 'undefined') {
+      console.error("Phoenix is not defined");
+    } else {
+      console.log("Phoenix is loaded");
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      console.log("Creating socket");
+      
+      // Try using explicit protocol determination
+      let wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+      let wsUrl = wsProtocol + window.location.host + "/socket";
+      console.log("Attempting WebSocket connection to:", wsUrl);
+      
+      let socket = new window.Phoenix.Socket(wsUrl, {
+        params: {_csrf_token: csrfToken},
+        logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data); }
+      });
+      
+      // Add better error handling
+      socket.onError(() => console.error("Socket connection error"));
+      socket.onClose(() => console.log("Socket connection closed"));
+      
+      console.log("Connecting socket");
+      socket.connect();
+      
+      console.log("Creating channel");
+      let channel = socket.channel("match:soccer");
+      console.log("Joining channel");
+      channel.join()
+        .receive("ok", resp => {
+          console.log("Joined successfully++++++++++++++++++++", resp);
+          console.log("Pushing ping");
+          channel.push("ping", {message: "hello"})
+            .receive("ok", resp => { console.log("Ping response", resp); });
+        })
+        .receive("error", resp => { console.error("Unable to join", resp); });
+    }
+  </script>
+</body>
+</html>

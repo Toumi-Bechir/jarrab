@@ -1,0 +1,17 @@
+{
+  "name": "jarrab",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "phoenix": "file:../deps/phoenix"
+  },
+  "devDependencies": {
+    "esbuild": "^0.17.11"
+  },
+  "scripts": {
+    "build": "esbuild app.js --bundle --outdir=../priv/static/assets --minify",
+    "watch": "esbuild app.js --bundle --outdir=../priv/static/assets --watch"
+  }
+}
