@@ -7,7 +7,7 @@ defmodule Jarrab.WebSocketClient do
 
   def start_link(sport, retries \\ 3, simulate \\ false) do
     #token = if simulate, do: "mock_token", else: Jarrab.TokenFetcher.get_token()
-    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1biI6InRiZWNoaXIiLCJuYmYiOjE3NDY3NTYwMjIsImV4cCI6MTc0Njc1OTYyMiwiaWF0IjoxNzQ2NzU2MDIyfQ.Z4VexmvFtVEHbP0O_10JjAsLI6WHtMwDak-oP8DZ4-c"
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1biI6InRiZWNoaXIiLCJuYmYiOjE3NDY4MjE4MTUsImV4cCI6MTc0NjgyNTQxNSwiaWF0IjoxNzQ2ODIxODE1fQ.vFeh7ltxZOWGdEGuB8s1laMxALOTmaVtJt6Hfkb4IoU"
     unless token do
       IO.puts("No token available for sport #{sport}. Cannot start WebSocketClient.")
       {:error, :no_token}

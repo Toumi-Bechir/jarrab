@@ -5,10 +5,12 @@ const App = () => {
   const [matches, setMatches] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalMatches, setTotalMatches] = useState(0);
   const [connectedUsers, setConnectedUsers] = useState(0);
   const [channel, setChannel] = useState(null);
   const [sport, setSport] = useState("soccer");
   const sports = ["soccer", "basket", "tennis", "baseball", "amfootball", "hockey", "volleyball"];
+  const pageSize = 50;
 
   useEffect(() => {
     const socket = new Phoenix.Socket("/socket", {});
@@ -19,7 +21,9 @@ const App = () => {
       .receive("ok", resp => {
         console.log(`Joined match:${sport}`, resp);
         setMatches(resp.events || []);
-        setTotalPages(resp.total_pages || 1);
+        const newTotalPages = resp.total_pages || 1;
+        setTotalPages(newTotalPages);
+        setTotalMatches(newTotalPages * pageSize);
       })
       .receive("error", resp => {
         console.error(`Failed to join match:${sport}`, resp);
@@ -39,11 +43,23 @@ const App = () => {
         });
         return updatedMatches;
       });
+      newChannel.push("get_event_count", {})
+        .receive("ok", resp => {
+          const newTotalPages = resp.total_pages || 1;
+          setTotalPages(newTotalPages);
+          setTotalMatches(newTotalPages * pageSize);
+        });
     });
 
     newChannel.on("event_removed", payload => {
       console.log("Received event removed", payload);
       setMatches(prevMatches => prevMatches.filter(match => match.id !== payload.event_id));
+      newChannel.push("get_event_count", {})
+        .receive("ok", resp => {
+          const newTotalPages = resp.total_pages || 1;
+          setTotalPages(newTotalPages);
+          setTotalMatches(newTotalPages * pageSize);
+        });
     });
 
     newChannel.on("presence_state", payload => {
@@ -97,8 +113,8 @@ const App = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-900">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-800 p-4">
+      {/* Sidebar - Sticky on Desktop */}
+      <div className="w-64 bg-gray-800 p-4 md:sticky md:top-0 md:h-screen">
         <h2 className="text-xl font-bold mb-4">Sports</h2>
         <ul>
           {sports.map(s => (
@@ -117,7 +133,7 @@ const App = () => {
       {/* Main Content */}
       <div className="flex-1 p-6">
         <div className="bg-gray-800 p-4 rounded-lg mb-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Live Matches - {sport}</h1>
+          <h1 className="text-2xl font-bold text-white">Live Matches - {sport} ({totalMatches})</h1>
           <span className="text-gray-400">Connected Users: {connectedUsers}</span>
         </div>
         <MatchList groupedMatches={groupedMatches} />
