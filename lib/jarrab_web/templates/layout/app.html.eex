@@ -12,10 +12,8 @@
   <body>
     <header>
       <section class="container">
-        <nav>
-          <li><a href="/">Home</a></li>
-        </nav>
-        <h1>Jarrab</h1>
+        
+        
       </section>
     </header>
     <main role="main" class="container">

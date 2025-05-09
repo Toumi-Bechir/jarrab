@@ -57,7 +57,11 @@ defmodule Jarrab.MixProject do
       {:bandit, "~> 1.5"},
       {:phoenix_view, "~> 2.0"},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html_helpers, "~> 1.0"}
+      {:phoenix_html_helpers, "~> 1.0"},
+      {:gen_stage, "~> 1.2"},
+      {:phoenix_pubsub, "~> 2.1"},
+      {:websockex, "~> 0.4.3"},
+      {:httpoison, "~> 2.0"}
     ]
   end
 
