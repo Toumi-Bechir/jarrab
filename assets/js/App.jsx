@@ -11,6 +11,7 @@ const App = () => {
   const [connectedUsers, setConnectedUsers] = useState(0);
   const [channel, setChannel] = useState(null);
   const [sport, setSport] = useState("soccer");
+  const [isLoading, setIsLoading] = useState(false); // New loading state
   const sports = ["soccer", "basket", "tennis", "baseball", "amfootball", "hockey", "volleyball"];
   const pageSize = 50; // Must match the backend @page_size
 
@@ -26,6 +27,7 @@ const App = () => {
   };
 
   useEffect(() => {
+    setIsLoading(true); // Indicate loading when sport or page changes
     const socket = new Phoenix.Socket("/socket", {});
     socket.connect();
 
@@ -37,9 +39,11 @@ const App = () => {
         const newTotalPages = resp.total_pages || 1;
         setTotalPages(newTotalPages);
         setTotalMatches(resp.total_events || 0);
+        setIsLoading(false); // Stop loading once data is received
       })
       .receive("error", resp => {
         console.error(`Failed to join match:${sport}`, resp);
+        setIsLoading(false); // Stop loading on error
       });
 
     newChannel.on("batch_update", payload => {
@@ -128,6 +132,9 @@ const App = () => {
   const handleSportChange = (newSport) => {
     setSport(newSport);
     setPage(1);
+    setMatches([]); // Clear matches immediately
+    setConnectedUsers(0); // Clear connected users immediately
+    setTotalMatches(0); // Clear total matches immediately
   };
 
   return (
@@ -160,8 +167,12 @@ const App = () => {
                   {/* Sticky Header and Sports Menu */}
                   <div className="sticky top-0 z-10 bg-gray-900">
                     <div className="bg-gray-800 p-4 rounded-lg mb-4 flex justify-between items-center">
-                      <h1 className="text-2xl font-bold text-white">Live Matches - {sport} ({totalMatches})</h1>
-                      <span className="text-gray-400">Connected Users: {connectedUsers}</span>
+                      <h1 className="text-2xl font-bold text-white">
+                        Live Matches - {sport} ({totalMatches})
+                      </h1>
+                      <span className="text-gray-400">
+                        Connected Users: {isLoading ? '...' : connectedUsers}
+                      </span>
                     </div>
 
                     {/* Sports Menu - Horizontal on Mobile */}
@@ -180,24 +191,30 @@ const App = () => {
 
                   {/* Match List - Scrollable */}
                   <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-                    <MatchList groupedMatches={groupedMatches} />
-                    <div className="mt-4 flex justify-between">
-                      <button
-                        onClick={handlePrevPage}
-                        disabled={page === 1}
-                        className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
-                      >
-                        Previous
-                      </button>
-                      <span className="text-gray-400">Page {page} of {totalPages}</span>
-                      <button
-                        onClick={handleNextPage}
-                        disabled={page === totalPages}
-                        className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
-                      >
-                        Next
-                      </button>
-                    </div>
+                    {isLoading ? (
+                      <p className="text-gray-400">Loading matches...</p>
+                    ) : (
+                      <MatchList groupedMatches={groupedMatches} />
+                    )}
+                    {!isLoading && (
+                      <div className="mt-4 flex justify-between">
+                        <button
+                          onClick={handlePrevPage}
+                          disabled={page === 1}
+                          className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-gray-400">Page {page} of {totalPages}</span>
+                        <button
+                          onClick={handleNextPage}
+                          disabled={page === totalPages}
+                          className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               }
