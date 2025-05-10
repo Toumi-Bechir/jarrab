@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getMarketName } from './marketNames';
 
-const MatchDetails = ({ matches, sport }) => {
+const MatchDetails = memo(({ matches, sport }) => {
   const { id } = useParams(); // Get the match ID from the URL
   const navigate = useNavigate();
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
@@ -27,19 +27,26 @@ const MatchDetails = ({ matches, sport }) => {
   const redCards = match?.red_cards || { team1: 0, team2: 0 };
   const allOdds = match?.odds || [];
 
-  // Filter matches for the same sport and group by league
-  const sportMatches = matches.filter(m => m.sport === sport);
-  const groupedSportMatches = sportMatches.reduce((acc, match) => {
-    const league = match.cmp_name || "Unknown League";
-    if (!acc[league]) {
-      acc[league] = [];
-    }
-    acc[league].push(match);
-    return acc;
-  }, {});
-  const leagues = Object.keys(groupedSportMatches); // Removed .sort()
+  // Memoize sportMatches to prevent recalculation on every render
+  const sportMatches = useMemo(() => {
+    return matches.filter(m => m.sport === sport);
+  }, [matches, sport]);
 
-  // Group odds by id for the expanded view
+  // Memoize groupedSportMatches to prevent recalculation on every render
+  const groupedSportMatches = useMemo(() => {
+    return sportMatches.reduce((acc, match) => {
+      const league = match.cmp_name || "Unknown League";
+      if (!acc[league]) {
+        acc[league] = [];
+      }
+      acc[league].push(match);
+      return acc;
+    }, {});
+  }, [sportMatches]);
+
+  const leagues = Object.keys(groupedSportMatches);
+
+  // Group odds by id for the expanded view, preserving order
   const groupedOdds = allOdds.reduce((acc, odd) => {
     const id = odd.id;
     if (!acc[id]) {
@@ -48,6 +55,15 @@ const MatchDetails = ({ matches, sport }) => {
     acc[id].push(odd);
     return acc;
   }, {});
+
+  // Preserve the order of odds IDs as they appear in allOdds
+  const oddsIds = [];
+  allOdds.forEach(odd => {
+    const id = odd.id;
+    if (!oddsIds.includes(id)) {
+      oddsIds.push(id);
+    }
+  });
 
   // Handler to close the menu when a match is clicked
   const handleMatchClick = () => {
@@ -175,7 +191,7 @@ const MatchDetails = ({ matches, sport }) => {
           <div className="bg-gray-800 p-4 rounded-lg">
             <h2 className="text-lg font-semibold mb-2">Betting Odds</h2>
             <div className="space-y-2">
-              {Object.keys(groupedOdds).map(id => (
+              {oddsIds.map(id => (
                 <OddsMarket
                   key={id}
                   id={Number(id)}
@@ -191,7 +207,7 @@ const MatchDetails = ({ matches, sport }) => {
       </div>
     </div>
   );
-};
+});
 
 // Component for each odds market (copied from MatchList.jsx)
 const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
@@ -226,7 +242,7 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
         </div>
 
         {/* Data Rows: ha and v values */}
-        {safeOdds.sort((a, b) => a.ha - b.ha).map((odd, index) => (
+        {safeOdds.map((odd, index) => (
           <div key={index} className="flex py-1 border-b border-gray-500 last:border-b-0">
             <span className="w-16 text-center text-white">ha ({odd.ha})</span>
             {optionNames.map((name, idx) => {
@@ -290,7 +306,7 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
         </div>
 
         {/* Data Rows: ha and v values */}
-        {safeOdds.sort((a, b) => a.ha - b.ha).map((odd, index) => (
+        {safeOdds.map((odd, index) => (
           <div key={index} className="flex py-1 border-b border-gray-500 last:border-b-0">
             {optionNames.map((name, idx) => {
               const option = odd.o?.find(opt => opt.n === name);

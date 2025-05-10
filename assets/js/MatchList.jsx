@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { getMarketName } from './marketNames';
 
-const MatchList = ({ groupedMatches }) => {
-  const leagues = Object.keys(groupedMatches); // Removed .sort()
+const MatchList = memo(({ groupedMatches }) => {
+  const leagues = Object.keys(groupedMatches);
   const [expandedMatchId, setExpandedMatchId] = useState(null);
 
   // Toggle the expanded state for a match
@@ -40,9 +40,9 @@ const MatchList = ({ groupedMatches }) => {
       )}
     </div>
   );
-};
+});
 
-const MatchCard = ({ match, isExpanded, toggleDetails }) => {
+const MatchCard = memo(({ match, isExpanded, toggleDetails }) => {
   // Extract team names
   const team1 = match.t1?.n || "Team 1";
   const team2 = match.t2?.n || "Team 2";
@@ -57,10 +57,8 @@ const MatchCard = ({ match, isExpanded, toggleDetails }) => {
   const homeScore = match.stats?.a?.[0] || "0";
   const awayScore = match.stats?.a?.[1] || "0";
 
-  // Extract odds for 421 (handicap over/under) and select the one with the smallest ha
-  const odds421 = match.odds
-    ?.filter(odd => odd.id === 421)
-    .sort((a, b) => a.ha - b.ha)[0] || null;
+  // Extract odds for 421 (handicap over/under) without sorting
+  const odds421 = match.odds?.filter(odd => odd.id === 421)[0] || null; // Take the first match without sorting
 
   // Extract over/under values and ha from the selected odds
   const overValue = odds421?.o?.find(opt => opt.n === "Over")?.v || "N/A";
@@ -133,7 +131,7 @@ const MatchCard = ({ match, isExpanded, toggleDetails }) => {
           {Object.keys(groupedOdds).map(id => (
             <OddsMarket
               key={id}
-              id={Number(id)} // Convert id to number for comparison
+              id={Number(id)}
               odds={groupedOdds[id]}
               homeTeam={team1}
               awayTeam={team2}
@@ -144,17 +142,16 @@ const MatchCard = ({ match, isExpanded, toggleDetails }) => {
       )}
     </div>
   );
-};
+});
 
-// Component for each odds market
-const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
+const OddsMarket = memo(({ id, odds, homeTeam, awayTeam, sport }) => {
   const [isMarketExpanded, setIsMarketExpanded] = useState(false);
 
   // Determine the display type based on the structure of the options
   const optionNames = [...new Set(odds.flatMap(odd => odd.o.map(opt => opt.n)))].sort();
   const isTableFormatOverUnder = optionNames.some(name => ["Over", "Under", "Exactly"].includes(name));
-  const isRowFormat = optionNames.some(name => ["1", "X", "2"].includes(name)) && !odds[0].ha; // Second structure: 1, X, 2 without ha
-  const isTableFormatHandicap = optionNames.some(name => ["1", "X", "2"].includes(name)) && odds[0].ha; // Third structure: 1, X, 2 with ha
+  const isRowFormat = optionNames.some(name => ["1", "X", "2"].includes(name)) && !odds[0]?.ha; // Second structure: 1, X, 2 without ha
+  const isTableFormatHandicap = optionNames.some(name => ["1", "X", "2"].includes(name)) && odds[0]?.ha; // Third structure: 1, X, 2 with ha
 
   // Default format for odds (simple list)
   const formatOddsOptions = (odd) => {
@@ -176,7 +173,7 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
         </div>
 
         {/* Data Rows: ha and v values */}
-        {odds.sort((a, b) => a.ha - b.ha).map((odd, index) => (
+        {odds.map((odd, index) => ( // Removed sorting by ha
           <div key={index} className="flex py-1 border-b border-gray-500 last:border-b-0">
             <span className="w-16 text-center text-white">ha ({odd.ha})</span>
             {optionNames.map((name, idx) => {
@@ -240,7 +237,7 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
         </div>
 
         {/* Data Rows: ha and v values */}
-        {odds.sort((a, b) => a.ha - b.ha).map((odd, index) => (
+        {odds.map((odd, index) => ( // Removed sorting by ha
           <div key={index} className="flex py-1 border-b border-gray-500 last:border-b-0">
             {optionNames.map((name, idx) => {
               const option = odd.o.find(opt => opt.n === name);
@@ -325,6 +322,6 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
       )}
     </div>
   );
-};
+});
 
 export default MatchList;

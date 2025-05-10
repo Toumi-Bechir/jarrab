@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import MatchList from './MatchList';
 import MatchDetails from './MatchDetails';
@@ -36,7 +36,7 @@ const App = () => {
         setMatches(resp.events || []);
         const newTotalPages = resp.total_pages || 1;
         setTotalPages(newTotalPages);
-        setTotalMatches(resp.total_events || 0); // Use total_events directly
+        setTotalMatches(resp.total_events || 0);
       })
       .receive("error", resp => {
         console.error(`Failed to join match:${sport}`, resp);
@@ -60,7 +60,7 @@ const App = () => {
         .receive("ok", resp => {
           const newTotalPages = resp.total_pages || 1;
           setTotalPages(newTotalPages);
-          setTotalMatches(resp.total_events || 0); // Use total_events directly
+          setTotalMatches(resp.total_events || 0);
         });
     });
 
@@ -71,14 +71,14 @@ const App = () => {
         .receive("ok", resp => {
           const newTotalPages = resp.total_pages || 1;
           setTotalPages(newTotalPages);
-          setTotalMatches(resp.total_events || 0); // Use total_events directly
+          setTotalMatches(resp.total_events || 0);
         });
     });
 
     newChannel.on("presence_state", payload => {
       console.log("Received presence state", payload);
       const userCount = Object.keys(payload).length;
-      console.log(`Setting connectedUsers to ${userCount}`); // Debug log
+      console.log(`Setting connectedUsers to ${userCount}`);
       setConnectedUsers(userCount);
     });
 
@@ -88,7 +88,7 @@ const App = () => {
         const joins = Object.keys(payload.joins).length;
         const leaves = Object.keys(payload.leaves).length;
         const newCount = prevCount + joins - leaves;
-        console.log(`Updating connectedUsers: prev=${prevCount}, joins=${joins}, leaves=${leaves}, newCount=${newCount}`); // Debug log
+        console.log(`Updating connectedUsers: prev=${prevCount}, joins=${joins}, leaves=${leaves}, newCount=${newCount}`);
         return newCount;
       });
     });
@@ -101,14 +101,17 @@ const App = () => {
     };
   }, [sport, page]);
 
-  const groupedMatches = matches.reduce((acc, match) => {
-    const league = match.cmp_name || "Unknown League";
-    if (!acc[league]) {
-      acc[league] = [];
-    }
-    acc[league].push(match);
-    return acc;
-  }, {});
+  // Memoize groupedMatches to prevent recalculation on every render
+  const groupedMatches = useMemo(() => {
+    return matches.reduce((acc, match) => {
+      const league = match.cmp_name || "Unknown League";
+      if (!acc[league]) {
+        acc[league] = [];
+      }
+      acc[league].push(match);
+      return acc;
+    }, {});
+  }, [matches]);
 
   const handleNextPage = () => {
     if (page < totalPages) {

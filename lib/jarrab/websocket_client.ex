@@ -7,7 +7,7 @@ defmodule Jarrab.WebSocketClient do
 
   def start_link(sport, retries \\ 3, simulate \\ false) do
     #token = if simulate, do: "mock_token", else: Jarrab.TokenFetcher.get_token()
-    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1biI6InRiZWNoaXIiLCJuYmYiOjE3NDY4MzM3NzcsImV4cCI6MTc0NjgzNzM3NywiaWF0IjoxNzQ2ODMzNzc3fQ.8K6kmdQTZc0by3_kCCGpYTNsin2vvfU61PMHlTaKzBE"
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1biI6InRiZWNoaXIiLCJuYmYiOjE3NDY4NDQyOTksImV4cCI6MTc0Njg0Nzg5OSwiaWF0IjoxNzQ2ODQ0Mjk5fQ.jgOIFu48sV6nXOADDmVP_G2uPyYvtGCc_l5GQ7X7DMc"
     unless token do
       IO.puts("No token available for sport #{sport}. Cannot start WebSocketClient.")
       {:error, :no_token}
@@ -70,7 +70,7 @@ defmodule Jarrab.WebSocketClient do
         sport = Map.get(message, "sp")
         normalized_sport = if sport == "basketball", do: "basket", else: sport
         message_with_sport = Map.put(message, "sport", normalized_sport)
-        IO.puts("Received WebSocket message for sport #{state.sport}: #{inspect(message_with_sport, pretty: true)}")
+        #IO.puts("Received WebSocket message for sport #{state.sport}: #{inspect(message_with_sport, pretty: true)}")
         handle_message(message_with_sport)
         {:ok, state}
       {:error, reason} ->
