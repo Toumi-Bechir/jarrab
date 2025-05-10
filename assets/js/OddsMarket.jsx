@@ -1,152 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { getMarketName } from './marketNames';
 
-const MatchList = ({ groupedMatches }) => {
-  const leagues = Object.keys(groupedMatches); // Removed .sort()
-  const [expandedMatchId, setExpandedMatchId] = useState(null);
-
-  // Toggle the expanded state for a match
-  const toggleMatchDetails = (matchId) => {
-    setExpandedMatchId(prevId => (prevId === matchId ? null : matchId));
-  };
-
-  return (
-    <div className="space-y-4">
-      {leagues.length === 0 ? (
-        <p className="text-gray-400">No matches available.</p>
-      ) : (
-        leagues.map(league => (
-          <div key={league} className="bg-gray-800 rounded-lg overflow-hidden">
-            <div className="flex justify-between items-center bg-gray-700 text-white px-4 py-2">
-              <h2 className="text-lg font-semibold">{league}</h2>
-              <div className="flex space-x-4 text-sm">
-                <span className="w-16 text-center">Over</span>
-                <span className="w-16 text-center">Under</span>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-700">
-              {groupedMatches[league].map(match => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  isExpanded={expandedMatchId === match.id}
-                  toggleDetails={() => toggleMatchDetails(match.id)}
-                />
-              ))}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
-
-const MatchCard = ({ match, isExpanded, toggleDetails }) => {
-  // Extract team names
-  const team1 = match.t1?.n || "Team 1";
-  const team2 = match.t2?.n || "Team 2";
-
-  // Extract match time (et in seconds, convert to MM:SS)
-  const matchTimeSeconds = match.et || 0;
-  const minutes = Math.floor(matchTimeSeconds / 60);
-  const seconds = matchTimeSeconds % 60;
-  const matchTime = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
-  // Extract score (stats.a in format [home, away])
-  const homeScore = match.stats?.a?.[0] || "0";
-  const awayScore = match.stats?.a?.[1] || "0";
-
-  // Extract odds for 421 (handicap over/under) and select the one with the smallest ha
-  const odds421 = match.odds
-    ?.filter(odd => odd.id === 421)
-    .sort((a, b) => a.ha - b.ha)[0] || null;
-
-  // Extract over/under values and ha from the selected odds
-  const overValue = odds421?.o?.find(opt => opt.n === "Over")?.v || "N/A";
-  const underValue = odds421?.o?.find(opt => opt.n === "Under")?.v || "N/A";
-  const haValue = odds421?.ha || "N/A";
-
-  // Extract sport from match data (assumed to be in match.sport)
-  const sport = match.sport || "soccer"; // Fallback to "soccer" if not available
-
-  // Group odds by id for the expanded view
-  const allOdds = match.odds || [];
-  const groupedOdds = allOdds.reduce((acc, odd) => {
-    const id = odd.id;
-    if (!acc[id]) {
-      acc[id] = [];
-    }
-    acc[id].push(odd);
-    return acc;
-  }, {});
-
-  return (
-    <div className="p-4 hover:bg-gray-700">
-      {/* Main Row - Always Visible */}
-      <div className="flex justify-between items-center">
-        {/* Left: Match Time, Teams, and Score */}
-        <div className="flex items-center space-x-2 flex-1">
-          <div className="flex items-center space-x-1 w-16">
-            <span className="text-red-500 text-xs">●</span>
-            <span className="text-sm text-gray-400">{matchTime}</span>
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center space-x-2">
-              <Link to={`/match/${match.id}`} className="text-base font-medium text-white flex-1 hover:underline">
-                {team1}
-              </Link>
-              <p className="text-sm text-yellow-400">{homeScore}</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Link to={`/match/${match.id}`} className="text-base font-medium text-white flex-1 hover:underline">
-                {team2}
-              </Link>
-              <p className="text-sm text-yellow-400">{awayScore}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Center: Odds (421) with ha */}
-        <div className="flex space-x-4 text-sm text-white mx-4">
-          <span className="w-16 text-center">
-            {haValue} <span className="text-yellow-400">{overValue}</span>
-          </span>
-          <span className="w-16 text-center">
-            {haValue} <span className="text-yellow-400">{underValue}</span>
-          </span>
-        </div>
-
-        {/* Right: Arrow Icon */}
-        <button
-          onClick={toggleDetails}
-          className="text-white text-xl focus:outline-none"
-        >
-          {isExpanded ? '▲' : '▼'}
-        </button>
-      </div>
-
-      {/* Expanded Details - Grouped Odds */}
-      {isExpanded && (
-        <div className="mt-2 text-sm text-gray-400 p-2 bg-gray-700 rounded">
-          <h4 className="font-semibold text-white mb-1">All Odds</h4>
-          {Object.keys(groupedOdds).map(id => (
-            <OddsMarket
-              key={id}
-              id={Number(id)} // Convert id to number for comparison
-              odds={groupedOdds[id]}
-              homeTeam={team1}
-              awayTeam={team2}
-              sport={sport}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Component for each odds market
 const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
   const [isMarketExpanded, setIsMarketExpanded] = useState(false);
 
@@ -265,7 +119,7 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
   // Row format for odds like id: 561127121 (arbitrary names, 2-3 columns per row)
   const renderDefaultRowFormat = () => {
     // Flatten options since each odds entry has multiple options
-    const allOptions = odds.flatMap(odd => odd.o || []);
+    const allOptions = odds.flatMap(odd => odd.o);
     // Group options into rows of 2 to 3 columns
     const rows = [];
     for (let i = 0; i < allOptions.length; i += 3) {
@@ -327,4 +181,4 @@ const OddsMarket = ({ id, odds, homeTeam, awayTeam, sport }) => {
   );
 };
 
-export default MatchList;
+export default OddsMarket;

@@ -15,8 +15,12 @@ defmodule JarrabWeb.MatchChannel do
     total_pages = max(1, div(total_events + @page_size - 1, @page_size))
     paginated_events = Enum.slice(events, (page - 1) * @page_size, @page_size)
 
-    Logger.info("Client joined match:#{sport}: user_id=#{socket.assigns.user_id}, page=#{page}")
-    {:ok, %{events: paginated_events, total_pages: total_pages}, assign(socket, :sport, sport)}
+    # Assign a unique user_id if not already set (e.g., via authentication)
+    user_id = socket.assigns[:user_id] || UUID.uuid4()
+    socket = assign(socket, :user_id, user_id)
+
+    Logger.info("Client joined match:#{sport}: user_id=#{user_id}, page=#{page}")
+    {:ok, %{events: paginated_events, total_pages: total_pages, total_events: total_events}, assign(socket, :sport, sport)}
   end
 
   def join("match:" <> sport, _payload, socket) do
@@ -58,7 +62,7 @@ defmodule JarrabWeb.MatchChannel do
     events = Jarrab.EventData.get_all_events(sport)
     total_events = length(events)
     total_pages = max(1, div(total_events + @page_size - 1, @page_size))
-    {:reply, {:ok, %{total_pages: total_pages}}, socket}
+    {:reply, {:ok, %{total_pages: total_pages, total_events: total_events}}, socket}
   end
 
   @impl true

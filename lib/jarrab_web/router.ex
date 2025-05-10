@@ -21,5 +21,6 @@ defmodule JarrabWeb.Router do
 
     get "/", PageController, :index
     get "/channel_test", PageController, :channel_test
+    get "/*path", PageController, :index
   end
 end
