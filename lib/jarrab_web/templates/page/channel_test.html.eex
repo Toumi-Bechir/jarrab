@@ -36,7 +36,7 @@
       socket.connect();
       
       console.log("Creating channel");
-      let channel = socket.channel("match:soccer");
+      let channel = socket.channel("match:all");
       console.log("Joining channel");
       channel.join()
         .receive("ok", resp => {

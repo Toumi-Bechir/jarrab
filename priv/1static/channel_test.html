@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="csrf-token" content="GENERATED_CSRF_TOKEN">
+  <title>Channel Test</title>
+  <script src="/assets/phoenix.js"></script>
+</head>
+<body>
+  <h1>Channel Test</h1>
+  <p>Check the browser console for connection status.</p>
+  <script>
+    if (typeof window.Phoenix === 'undefined') {
+      console.error("Phoenix is not defined");
+    } else {
+      console.log("Phoenix is loaded");
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      console.log("Creating socket");
+      let socket = new window.Phoenix.Socket("/socket", {params: {_csrf_token: csrfToken}});
+      console.log("Connecting socket");
+      socket.connect();
+      console.log("Creating channel");
+      let channel = socket.channel("room:lobby");
+      console.log("Joining channel");
+      channel.join()
+        .receive("ok", resp => {
+          console.log("Joined successfullyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", resp);
+          console.log("Pushing ping");
+          channel.push("ping", {message: "hello"})
+            .receive("ok", resp => { console.log("Ping response", resp); });
+        })
+        .receive("error", resp => { console.error("Unable to join", resp); });
+    }
+  </script>
+</body>
+</html>

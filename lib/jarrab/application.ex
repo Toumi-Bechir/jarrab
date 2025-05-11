@@ -8,6 +8,8 @@ defmodule Jarrab.Application do
 
   @impl true
   def start(_type, _args) do
+    # Create ETS table for shard cache
+    :ets.new(:jarrab_shard_cache, [:set, :public, :named_table])
     :pg.start_link()
     
     children = [

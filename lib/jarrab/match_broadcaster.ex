@@ -18,7 +18,7 @@ defmodule Jarrab.MatchBroadcaster do
     end
   
     def broadcast_removed(sport, event_id) do
-      JarrabWeb.Endpoint.broadcast("match:#{sport}", "event_removed", %{
+      JarrabWeb.Endpoint.broadcast("match:all", "event_removed", %{
         event_id: event_id
       })
     end
@@ -51,7 +51,7 @@ defmodule Jarrab.MatchBroadcaster do
         payload = %{
           updates: Enum.map(sport_updates, fn {_, event_id, event} -> %{event_id: event_id, event: event} end)
         }
-        JarrabWeb.Endpoint.broadcast("match:#{sport}", "batch_update", payload)
+        JarrabWeb.Endpoint.broadcast("match:all", "batch_update", payload)
       end)
     end
   

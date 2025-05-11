@@ -5,15 +5,11 @@ import MatchDetails from './MatchDetails';
 
 const App = () => {
   const [matches, setMatches] = useState([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalMatches, setTotalMatches] = useState(0);
   const [connectedUsers, setConnectedUsers] = useState(0);
-  const [channel, setChannel] = useState(null);
   const [sport, setSport] = useState("soccer");
-  const [isLoading, setIsLoading] = useState(false); // New loading state
+  const [isLoading, setIsLoading] = useState(false);
   const sports = ["soccer", "basket", "tennis", "baseball", "amfootball", "hockey", "volleyball"];
-  const pageSize = 50; // Must match the backend @page_size
 
   // Map sports to their Unicode icons for mobile view
   const sportIcons = {
@@ -27,27 +23,33 @@ const App = () => {
   };
 
   useEffect(() => {
-    setIsLoading(true); // Indicate loading when sport or page changes
+    setIsLoading(true);
     const socket = new Phoenix.Socket("/socket", {});
     socket.connect();
 
-    const newChannel = socket.channel(`match:${sport}`, { page: page.toString() });
+    const channelTopic = "match:all"; // Define topic explicitly
+    console.log("Joining channel:", channelTopic); // Debug log
+    const newChannel = socket.channel("match:all", {});
     newChannel.join()
       .receive("ok", resp => {
-        console.log(`Joined match:${sport}`, resp);
-        setMatches(resp.events || []);
-        const newTotalPages = resp.total_pages || 1;
-        setTotalPages(newTotalPages);
-        setTotalMatches(resp.total_events || 0);
-        setIsLoading(false); // Stop loading once data is received
+        console.log("Joined channel successfully:", channelTopic, resp); // Debug log
+        setIsLoading(false);
       })
       .receive("error", resp => {
-        console.error(`Failed to join match:${sport}`, resp);
-        setIsLoading(false); // Stop loading on error
+        console.error("Failed to join channel:", channelTopic, resp); // Debug log
+        setIsLoading(false);
       });
 
+    newChannel.on("shard_data", payload => {
+      const shardEvents = payload.events || [];
+      setMatches(prevMatches => {
+        const otherShardEvents = prevMatches.filter(event => !shardEvents.some(e => e.id === event.id));
+        return [...otherShardEvents, ...shardEvents];
+      });
+      newChannel.push("get_event_count", {});
+    });
+
     newChannel.on("batch_update", payload => {
-      console.log("Received batch update", payload);
       setMatches(prevMatches => {
         const updatedMatches = [...prevMatches];
         payload.updates.forEach(update => {
@@ -60,54 +62,41 @@ const App = () => {
         });
         return updatedMatches;
       });
-      newChannel.push("get_event_count", {})
-        .receive("ok", resp => {
-          const newTotalPages = resp.total_pages || 1;
-          setTotalPages(newTotalPages);
-          setTotalMatches(resp.total_events || 0);
-        });
+      newChannel.push("get_event_count", {});
     });
 
     newChannel.on("event_removed", payload => {
-      console.log("Received event removed", payload);
       setMatches(prevMatches => prevMatches.filter(match => match.id !== payload.event_id));
-      newChannel.push("get_event_count", {})
-        .receive("ok", resp => {
-          const newTotalPages = resp.total_pages || 1;
-          setTotalPages(newTotalPages);
-          setTotalMatches(resp.total_events || 0);
-        });
+      newChannel.push("get_event_count", {});
     });
 
     newChannel.on("presence_state", payload => {
-      console.log("Received presence state", payload);
       const userCount = Object.keys(payload).length;
-      console.log(`Setting connectedUsers to ${userCount}`);
       setConnectedUsers(userCount);
     });
 
     newChannel.on("presence_diff", payload => {
-      console.log("Received presence diff", payload);
       setConnectedUsers(prevCount => {
         const joins = Object.keys(payload.joins).length;
         const leaves = Object.keys(payload.leaves).length;
-        const newCount = prevCount + joins - leaves;
-        console.log(`Updating connectedUsers: prev=${prevCount}, joins=${joins}, leaves=${leaves}, newCount=${newCount}`);
-        return newCount;
+        return prevCount + joins - leaves;
       });
     });
 
-    setChannel(newChannel);
+    newChannel.push("get_event_count", {});
 
     return () => {
       newChannel.leave();
       socket.disconnect();
     };
-  }, [sport, page]);
+  }, []);
 
-  // Memoize groupedMatches to prevent recalculation on every render
+  const sportMatches = useMemo(() => {
+    return matches.filter(m => m.sport === sport);
+  }, [matches, sport]);
+
   const groupedMatches = useMemo(() => {
-    return matches.reduce((acc, match) => {
+    return sportMatches.reduce((acc, match) => {
       const league = match.cmp_name || "Unknown League";
       if (!acc[league]) {
         acc[league] = [];
@@ -115,32 +104,17 @@ const App = () => {
       acc[league].push(match);
       return acc;
     }, {});
-  }, [matches]);
-
-  const handleNextPage = () => {
-    if (page < totalPages) {
-      setPage(prevPage => prevPage + 1);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage(prevPage => prevPage - 1);
-    }
-  };
+  }, [sportMatches]);
 
   const handleSportChange = (newSport) => {
     setSport(newSport);
-    setPage(1);
-    setMatches([]); // Clear matches immediately
-    setConnectedUsers(0); // Clear connected users immediately
-    setTotalMatches(0); // Clear total matches immediately
+    setIsLoading(true);
+    setTimeout(() => setIsLoading(false), 0);
   };
 
   return (
     <Router>
       <div className="flex min-h-screen bg-gray-900">
-        {/* Sidebar - Sticky on Desktop, Hidden on Mobile */}
         <div className="w-64 bg-gray-800 p-4 md:sticky md:top-0 md:h-screen hidden md:block">
           <h2 className="text-xl font-bold mb-4">Sports</h2>
           <ul>
@@ -157,25 +131,22 @@ const App = () => {
           </ul>
         </div>
 
-        {/* Main Content */}
         <div className="flex-1 p-6">
           <Routes>
             <Route
               path="/"
               element={
                 <>
-                  {/* Sticky Header and Sports Menu */}
                   <div className="sticky top-0 z-10 bg-gray-900">
                     <div className="bg-gray-800 p-4 rounded-lg mb-4 flex justify-between items-center">
                       <h1 className="text-2xl font-bold text-white">
-                        Live Matches - {sport} ({totalMatches})
+                        Live Matches - {sport} ({sportMatches.length})
                       </h1>
                       <span className="text-gray-400">
                         Connected Users: {isLoading ? '...' : connectedUsers}
                       </span>
                     </div>
 
-                    {/* Sports Menu - Horizontal on Mobile */}
                     <div className="md:hidden flex overflow-x-auto space-x-2 mb-4">
                       {sports.map(s => (
                         <button
@@ -189,31 +160,11 @@ const App = () => {
                     </div>
                   </div>
 
-                  {/* Match List - Scrollable */}
                   <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
                     {isLoading ? (
                       <p className="text-gray-400">Loading matches...</p>
                     ) : (
                       <MatchList groupedMatches={groupedMatches} />
-                    )}
-                    {!isLoading && (
-                      <div className="mt-4 flex justify-between">
-                        <button
-                          onClick={handlePrevPage}
-                          disabled={page === 1}
-                          className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
-                        >
-                          Previous
-                        </button>
-                        <span className="text-gray-400">Page {page} of {totalPages}</span>
-                        <button
-                          onClick={handleNextPage}
-                          disabled={page === totalPages}
-                          className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-600"
-                        >
-                          Next
-                        </button>
-                      </div>
                     )}
                   </div>
                 </>
@@ -221,7 +172,7 @@ const App = () => {
             />
             <Route
               path="/match/:id"
-              element={<MatchDetails matches={matches} sport={sport} />}
+              element={<MatchDetails matches={sportMatches} sport={sport} />}
             />
           </Routes>
         </div>
